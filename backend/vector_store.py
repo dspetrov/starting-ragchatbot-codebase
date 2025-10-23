@@ -95,7 +95,12 @@ class VectorStore:
                 n_results=search_limit,
                 where=filter_dict
             )
-            return SearchResults.from_chroma(results)
+            search_results = SearchResults.from_chroma(results)
+
+            # Enrich metadata with lesson links
+            self._enrich_with_lesson_links(search_results)
+
+            return search_results
         except Exception as e:
             return SearchResults.empty(f"Search error: {str(e)}")
     
@@ -119,18 +124,30 @@ class VectorStore:
         """Build ChromaDB filter from search parameters"""
         if not course_title and lesson_number is None:
             return None
-            
+
         # Handle different filter combinations
         if course_title and lesson_number is not None:
             return {"$and": [
                 {"course_title": course_title},
                 {"lesson_number": lesson_number}
             ]}
-        
+
         if course_title:
             return {"course_title": course_title}
-            
+
         return {"lesson_number": lesson_number}
+
+    def _enrich_with_lesson_links(self, search_results: SearchResults):
+        """Enrich search results metadata with lesson links from course catalog"""
+        for metadata in search_results.metadata:
+            course_title = metadata.get('course_title')
+            lesson_number = metadata.get('lesson_number')
+
+            # Only fetch lesson link if we have both course and lesson
+            if course_title and lesson_number is not None:
+                lesson_link = self.get_lesson_link(course_title, lesson_number)
+                if lesson_link:
+                    metadata['lesson_link'] = lesson_link
     
     def add_course_metadata(self, course: Course):
         """Add course information to the catalog for semantic search"""

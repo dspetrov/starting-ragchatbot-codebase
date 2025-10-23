@@ -4,7 +4,7 @@ from document_processor import DocumentProcessor
 from vector_store import VectorStore
 from ai_generator import AIGenerator
 from session_manager import SessionManager
-from search_tools import ToolManager, CourseSearchTool
+from search_tools import ToolManager, CourseSearchTool, CourseOutlineTool
 from models import Course, Lesson, CourseChunk
 
 class RAGSystem:
@@ -22,7 +22,9 @@ class RAGSystem:
         # Initialize search tools
         self.tool_manager = ToolManager()
         self.search_tool = CourseSearchTool(self.vector_store)
+        self.outline_tool = CourseOutlineTool(self.vector_store)
         self.tool_manager.register_tool(self.search_tool)
+        self.tool_manager.register_tool(self.outline_tool)
     
     def add_course_document(self, file_path: str) -> Tuple[Course, int]:
         """
@@ -99,16 +101,16 @@ class RAGSystem:
         
         return total_courses, total_chunks
     
-    def query(self, query: str, session_id: Optional[str] = None) -> Tuple[str, List[str]]:
+    def query(self, query: str, session_id: Optional[str] = None) -> Tuple[str, List[Dict]]:
         """
         Process a user query using the RAG system with tool-based search.
-        
+
         Args:
             query: User's question
             session_id: Optional session ID for conversation context
-            
+
         Returns:
-            Tuple of (response, sources list - empty for tool-based approach)
+            Tuple of (response, sources list with text and optional links)
         """
         # Create prompt for the AI with clear instructions
         prompt = f"""Answer this question about course materials: {query}"""
@@ -119,25 +121,29 @@ class RAGSystem:
             history = self.session_manager.get_conversation_history(session_id)
         
         # Generate response using AI with tools
-        response = self.ai_generator.generate_response(
+        result = self.ai_generator.generate_response(
             query=prompt,
             conversation_history=history,
             tools=self.tool_manager.get_tool_definitions(),
             tool_manager=self.tool_manager
         )
-        
+
+        # Extract response text from result dict
+        response_text = result["response"]
+        # Metadata available: result["rounds_used"], result["tools_used"]
+
         # Get sources from the search tool
         sources = self.tool_manager.get_last_sources()
 
         # Reset sources after retrieving them
         self.tool_manager.reset_sources()
-        
+
         # Update conversation history
         if session_id:
-            self.session_manager.add_exchange(session_id, query, response)
-        
+            self.session_manager.add_exchange(session_id, query, response_text)
+
         # Return response with sources from tool searches
-        return response, sources
+        return response_text, sources
     
     def get_course_analytics(self) -> Dict:
         """Get analytics about the course catalog"""

@@ -1,0 +1,6 @@
+Course Title: Test Course 2
+Course Link: https://example.com/course2
+Course Instructor: Instructor 2
+
+Lesson 0: Introduction
+This is course 2 content.

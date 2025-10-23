@@ -5,7 +5,7 @@ const API_URL = '/api';
 let currentSessionId = null;
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles;
+let chatMessages, chatInput, sendButton, totalCourses, courseTitles, newChatButton;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sendButton = document.getElementById('sendButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
+    newChatButton = document.getElementById('newChatButton');
     
     setupEventListeners();
     createNewSession();
@@ -28,8 +29,10 @@ function setupEventListeners() {
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
-    
-    
+
+    // New chat button
+    newChatButton.addEventListener('click', handleNewChat);
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
@@ -74,7 +77,10 @@ async function sendMessage() {
         if (!response.ok) throw new Error('Query failed');
 
         const data = await response.json();
-        
+
+        // Debug: log the sources structure
+        console.log('Received sources:', data.sources);
+
         // Update session ID if new
         if (!currentSessionId) {
             currentSessionId = data.session_id;
@@ -122,10 +128,31 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     let html = `<div class="message-content">${displayContent}</div>`;
     
     if (sources && sources.length > 0) {
+        // Format sources as individual badge elements
+        const formattedSources = sources.map(source => {
+            let displayText = '';
+
+            // Handle both old format (string) and new format (object with text/link)
+            if (typeof source === 'string') {
+                displayText = source;
+            } else if (source && source.text) {
+                displayText = source.text;
+            } else {
+                displayText = String(source);
+            }
+
+            // Create badge HTML with full text
+            if (source && source.link) {
+                return `<a href="${escapeHtml(source.link)}" target="_blank" rel="noopener noreferrer" class="source-badge source-link" title="${escapeHtml(displayText)}">${escapeHtml(displayText)}</a>`;
+            } else {
+                return `<span class="source-badge" title="${escapeHtml(displayText)}">${escapeHtml(displayText)}</span>`;
+            }
+        }).join('');
+
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${formattedSources}</div>
             </details>
         `;
     }
@@ -145,6 +172,23 @@ function escapeHtml(text) {
 }
 
 // Removed removeMessage function - no longer needed since we handle loading differently
+
+async function handleNewChat() {
+    // Delete the old session on the backend if it exists
+    if (currentSessionId) {
+        try {
+            await fetch(`${API_URL}/session/${currentSessionId}`, {
+                method: 'DELETE'
+            });
+        } catch (error) {
+            console.error('Error deleting session:', error);
+            // Continue with new session even if delete fails
+        }
+    }
+
+    // Create a new session
+    createNewSession();
+}
 
 async function createNewSession() {
     currentSessionId = null;
