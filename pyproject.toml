@@ -12,6 +12,9 @@ dependencies = [
     "uvicorn==0.35.0",
     "python-multipart==0.0.20",
     "python-dotenv==1.1.1",
+    "httpx==0.28.1",
+    "pytest==8.3.4",
+    "pytest-asyncio==0.25.2",
 ]
 
 [project.optional-dependencies]
@@ -68,3 +71,24 @@ exclude = ["chroma_db/", "backend/tests/"]
 # Relaxed configuration for gradual typing adoption
 allow_untyped_defs = true
 allow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",                          # Verbose output
+    "--strict-markers",            # Raise error on unregistered markers
+    "--tb=short",                  # Shorter traceback format
+    "--disable-warnings",          # Disable pytest warnings
+    "-ra",                         # Show summary of all test results
+]
+markers = [
+    "unit: Unit tests for individual components",
+    "integration: Integration tests for multiple components",
+    "api: API endpoint tests",
+    "slow: Tests that take a long time to run",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
