@@ -7,15 +7,17 @@ These tests verify that the vector store correctly handles:
 - Course name resolution (fuzzy matching)
 - Filtering by course and lesson
 """
-import pytest
+
 import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from vector_store import VectorStore, SearchResults
 from config import config
+from vector_store import SearchResults, VectorStore
 
 
 class TestSearchResults:
@@ -24,25 +26,21 @@ class TestSearchResults:
     def test_from_chroma_with_results(self):
         """Test creating SearchResults from ChromaDB response"""
         chroma_results = {
-            'documents': [['doc1', 'doc2']],
-            'metadatas': [[{'course_title': 'Course 1'}, {'course_title': 'Course 2'}]],
-            'distances': [[0.1, 0.2]]
+            "documents": [["doc1", "doc2"]],
+            "metadatas": [[{"course_title": "Course 1"}, {"course_title": "Course 2"}]],
+            "distances": [[0.1, 0.2]],
         }
         results = SearchResults.from_chroma(chroma_results)
 
         assert len(results.documents) == 2
-        assert results.documents[0] == 'doc1'
+        assert results.documents[0] == "doc1"
         assert len(results.metadata) == 2
-        assert results.metadata[0]['course_title'] == 'Course 1'
+        assert results.metadata[0]["course_title"] == "Course 1"
         assert results.error is None
 
     def test_from_chroma_empty(self):
         """Test creating SearchResults from empty ChromaDB response"""
-        chroma_results = {
-            'documents': [[]],
-            'metadatas': [[]],
-            'distances': [[]]
-        }
+        chroma_results = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
         results = SearchResults.from_chroma(chroma_results)
 
         assert len(results.documents) == 0
@@ -61,7 +59,7 @@ class TestSearchResults:
         empty = SearchResults(documents=[], metadata=[], distances=[])
         assert empty.is_empty()
 
-        not_empty = SearchResults(documents=['doc'], metadata=[{}], distances=[0.1])
+        not_empty = SearchResults(documents=["doc"], metadata=[{}], distances=[0.1])
         assert not not_empty.is_empty()
 
 
@@ -99,14 +97,14 @@ class TestVectorStoreWithConfig:
 
         # With MAX_RESULTS=0, this will fail
         if config.MAX_RESULTS > 0:
-            assert len(results.documents) > 0, (
-                f"Expected search results with MAX_RESULTS={config.MAX_RESULTS}, got none"
-            )
+            assert (
+                len(results.documents) > 0
+            ), f"Expected search results with MAX_RESULTS={config.MAX_RESULTS}, got none"
         else:
             # This is the expected failure case
-            assert len(results.documents) == 0, (
-                f"With MAX_RESULTS=0, search should return 0 results"
-            )
+            assert (
+                len(results.documents) == 0
+            ), f"With MAX_RESULTS=0, search should return 0 results"
 
 
 class TestVectorStoreAddOperations:
@@ -176,7 +174,7 @@ class TestVectorStoreSearch:
         assert not results.is_empty()
         # All results should be from the specified course
         for meta in results.metadata:
-            assert meta['course_title'] == sample_course.title
+            assert meta["course_title"] == sample_course.title
 
     def test_search_with_lesson_filter(self, temp_chroma_path, sample_course, sample_course_chunks):
         """Test search with lesson number filter"""
@@ -190,7 +188,7 @@ class TestVectorStoreSearch:
 
         # All results should be from lesson 0
         for meta in results.metadata:
-            assert meta['lesson_number'] == 0
+            assert meta["lesson_number"] == 0
 
     def test_search_nonexistent_course(self, temp_chroma_path):
         """Test search for non-existent course returns error"""
@@ -290,9 +288,9 @@ class TestVectorStoreMetadataEnrichment:
 
         # Check that lesson links were added to metadata
         for meta in results.metadata:
-            if meta.get('lesson_number') is not None:
+            if meta.get("lesson_number") is not None:
                 # Should have lesson_link added
-                assert 'lesson_link' in meta or meta.get('lesson_number') >= 0
+                assert "lesson_link" in meta or meta.get("lesson_number") >= 0
 
     def test_get_lesson_link(self, temp_chroma_path, sample_course):
         """Test getting specific lesson link"""

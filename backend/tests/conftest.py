@@ -1,17 +1,19 @@
 """
 Pytest configuration and shared fixtures for RAG system tests
 """
-import pytest
-import sys
+
 import os
+import sys
 from pathlib import Path
-from unittest.mock import Mock, MagicMock
-from typing import List, Dict
+from typing import Dict, List
+from unittest.mock import MagicMock, Mock
+
+import pytest
 
 # Add parent directory to path so we can import backend modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import Course, Lesson, CourseChunk
+from models import Course, CourseChunk, Lesson
 from vector_store import SearchResults
 
 
@@ -23,10 +25,22 @@ def sample_course():
         course_link="https://example.com/mcp",
         instructor="Alex Smith",
         lessons=[
-            Lesson(lesson_number=0, title="Getting Started", lesson_link="https://example.com/mcp/lesson-0"),
-            Lesson(lesson_number=1, title="Core Concepts", lesson_link="https://example.com/mcp/lesson-1"),
-            Lesson(lesson_number=2, title="Advanced Topics", lesson_link="https://example.com/mcp/lesson-2"),
-        ]
+            Lesson(
+                lesson_number=0,
+                title="Getting Started",
+                lesson_link="https://example.com/mcp/lesson-0",
+            ),
+            Lesson(
+                lesson_number=1,
+                title="Core Concepts",
+                lesson_link="https://example.com/mcp/lesson-1",
+            ),
+            Lesson(
+                lesson_number=2,
+                title="Advanced Topics",
+                lesson_link="https://example.com/mcp/lesson-2",
+            ),
+        ],
     )
 
 
@@ -38,25 +52,25 @@ def sample_course_chunks(sample_course):
             content="MCP stands for Model Context Protocol. It's a protocol for AI applications.",
             course_title=sample_course.title,
             lesson_number=0,
-            chunk_index=0
+            chunk_index=0,
         ),
         CourseChunk(
             content="The MCP protocol enables rich context sharing between AI models and applications.",
             course_title=sample_course.title,
             lesson_number=0,
-            chunk_index=1
+            chunk_index=1,
         ),
         CourseChunk(
             content="Core concepts include servers, clients, and resources in the MCP architecture.",
             course_title=sample_course.title,
             lesson_number=1,
-            chunk_index=2
+            chunk_index=2,
         ),
         CourseChunk(
             content="Advanced MCP topics cover security, authentication, and scaling patterns.",
             course_title=sample_course.title,
             lesson_number=2,
-            chunk_index=3
+            chunk_index=3,
         ),
     ]
 
@@ -71,22 +85,22 @@ def sample_search_results(sample_course_chunks):
                 "course_title": sample_course_chunks[0].course_title,
                 "lesson_number": sample_course_chunks[0].lesson_number,
                 "chunk_index": sample_course_chunks[0].chunk_index,
-                "lesson_link": "https://example.com/mcp/lesson-0"
+                "lesson_link": "https://example.com/mcp/lesson-0",
             },
             {
                 "course_title": sample_course_chunks[1].course_title,
                 "lesson_number": sample_course_chunks[1].lesson_number,
                 "chunk_index": sample_course_chunks[1].chunk_index,
-                "lesson_link": "https://example.com/mcp/lesson-0"
+                "lesson_link": "https://example.com/mcp/lesson-0",
             },
             {
                 "course_title": sample_course_chunks[2].course_title,
                 "lesson_number": sample_course_chunks[2].lesson_number,
                 "chunk_index": sample_course_chunks[2].chunk_index,
-                "lesson_link": "https://example.com/mcp/lesson-1"
+                "lesson_link": "https://example.com/mcp/lesson-1",
             },
         ],
-        distances=[0.1, 0.2, 0.3]
+        distances=[0.1, 0.2, 0.3],
     )
 
 

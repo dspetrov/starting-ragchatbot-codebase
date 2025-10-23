@@ -8,15 +8,17 @@ These tests verify end-to-end functionality:
 - Source retrieval
 - Document loading
 """
-import pytest
+
 import sys
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from rag_system import RAGSystem
 from config import config
+from rag_system import RAGSystem
 from vector_store import SearchResults
 
 
@@ -24,6 +26,7 @@ from vector_store import SearchResults
 def temp_config(temp_chroma_path):
     """Create a temporary config for testing"""
     from config import Config
+
     test_config = Config()
     test_config.CHROMA_PATH = temp_chroma_path
     test_config.MAX_RESULTS = 5  # Override the potentially broken config
@@ -49,10 +52,10 @@ class TestRAGSystemInitialization:
         rag = RAGSystem(temp_config)
 
         tool_defs = rag.tool_manager.get_tool_definitions()
-        tool_names = [tool['name'] for tool in tool_defs]
+        tool_names = [tool["name"] for tool in tool_defs]
 
-        assert 'search_course_content' in tool_names
-        assert 'get_course_outline' in tool_names
+        assert "search_course_content" in tool_names
+        assert "get_course_outline" in tool_names
 
 
 class TestRAGSystemDocumentProcessing:
@@ -142,7 +145,7 @@ Content here.
 class TestRAGSystemQuery:
     """Test query processing"""
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_query_without_session(self, mock_anthropic_class, temp_config):
         """Test basic query without session ID"""
         # Setup mock Claude response
@@ -163,8 +166,10 @@ class TestRAGSystemQuery:
         assert len(response) > 0
         assert isinstance(sources, list)
 
-    @patch('anthropic.Anthropic')
-    def test_query_with_tool_execution(self, mock_anthropic_class, temp_config, sample_course, sample_course_chunks):
+    @patch("anthropic.Anthropic")
+    def test_query_with_tool_execution(
+        self, mock_anthropic_class, temp_config, sample_course, sample_course_chunks
+    ):
         """
         CRITICAL TEST: Test complete query flow with tool execution.
         This simulates what happens when user asks a content-related question.
@@ -209,7 +214,7 @@ class TestRAGSystemQuery:
         if temp_config.MAX_RESULTS > 0:
             assert len(sources) > 0
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_query_with_session_history(self, mock_anthropic_class, temp_config):
         """Test query with session history"""
         mock_client = Mock()
@@ -233,11 +238,13 @@ class TestRAGSystemQuery:
 
         # Verify history was used in second call
         call_args = mock_client.messages.create.call_args_list[1]
-        system_prompt = call_args.kwargs['system']
+        system_prompt = call_args.kwargs["system"]
         assert "Previous conversation" in system_prompt or "What is MCP?" in system_prompt
 
-    @patch('anthropic.Anthropic')
-    def test_query_sources_reset_between_queries(self, mock_anthropic_class, temp_config, sample_course, sample_course_chunks):
+    @patch("anthropic.Anthropic")
+    def test_query_sources_reset_between_queries(
+        self, mock_anthropic_class, temp_config, sample_course, sample_course_chunks
+    ):
         """Test that sources are properly reset between queries"""
         mock_client = Mock()
 
@@ -262,8 +269,9 @@ class TestRAGSystemQuery:
         no_tool_response.stop_reason = "end_turn"
 
         mock_client.messages.create.side_effect = [
-            tool_response, final_response,  # First query
-            no_tool_response  # Second query
+            tool_response,
+            final_response,  # First query
+            no_tool_response,  # Second query
         ]
         mock_anthropic_class.return_value = mock_client
 
@@ -291,10 +299,10 @@ class TestRAGSystemCourseAnalytics:
 
         analytics = rag.get_course_analytics()
 
-        assert 'total_courses' in analytics
-        assert 'course_titles' in analytics
-        assert analytics['total_courses'] == 1
-        assert sample_course.title in analytics['course_titles']
+        assert "total_courses" in analytics
+        assert "course_titles" in analytics
+        assert analytics["total_courses"] == 1
+        assert sample_course.title in analytics["course_titles"]
 
     def test_get_course_analytics_empty(self, temp_config):
         """Test analytics with no courses"""
@@ -302,8 +310,8 @@ class TestRAGSystemCourseAnalytics:
 
         analytics = rag.get_course_analytics()
 
-        assert analytics['total_courses'] == 0
-        assert len(analytics['course_titles']) == 0
+        assert analytics["total_courses"] == 0
+        assert len(analytics["course_titles"]) == 0
 
 
 class TestRAGSystemWithActualConfig:
@@ -312,7 +320,7 @@ class TestRAGSystemWithActualConfig:
     These will FAIL if config.MAX_RESULTS=0
     """
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_query_with_actual_config_max_results(self, mock_anthropic_class):
         """
         CRITICAL TEST: This will FAIL if config.MAX_RESULTS=0
@@ -350,17 +358,17 @@ class TestRAGSystemWithActualConfig:
         rag.ai_generator.client = mock_client
 
         # Add test data
-        from models import Course, Lesson, CourseChunk
+        from models import Course, CourseChunk, Lesson
+
         test_course = Course(
-            title="Test MCP Course",
-            lessons=[Lesson(lesson_number=0, title="Intro")]
+            title="Test MCP Course", lessons=[Lesson(lesson_number=0, title="Intro")]
         )
         test_chunks = [
             CourseChunk(
                 content="MCP is the Model Context Protocol",
                 course_title="Test MCP Course",
                 lesson_number=0,
-                chunk_index=0
+                chunk_index=0,
             )
         ]
 

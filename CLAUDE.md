@@ -33,10 +33,56 @@ The application runs at:
 # Install dependencies
 uv sync
 
+# Install dependencies with dev tools (includes black, flake8, isort, mypy)
+uv sync --extra dev
+
 # Add new dependency
 # Edit pyproject.toml, then run:
 uv sync
 ```
+
+### Code Quality Tools
+
+The project uses several code quality tools to maintain consistent formatting and code standards:
+
+**Formatting:**
+```bash
+# Format code with black and isort
+./format.sh
+
+# Check formatting without modifying files
+./format-check.sh
+```
+
+**Linting:**
+```bash
+# Run flake8 linter
+./lint.sh
+```
+
+**Complete Quality Check:**
+```bash
+# Run all quality checks (formatting + linting)
+./quality-check.sh
+```
+
+**Optional Type Checking:**
+```bash
+# Run mypy type checker (optional, for gradual typing adoption)
+./type-check.sh
+```
+
+**Configuration:**
+- Black: Line length 100, configured in `pyproject.toml` under `[tool.black]`
+- isort: Black-compatible profile, configured in `pyproject.toml` under `[tool.isort]`
+- flake8: Line length 100, E203/W503 ignored, configured in `.flake8`
+- mypy: Relaxed configuration for gradual typing, configured in `pyproject.toml` under `[tool.mypy]`
+
+**Pre-commit Workflow:**
+1. Make code changes
+2. Run `./format.sh` to auto-format
+3. Run `./quality-check.sh` to verify all checks pass
+4. Commit your changes
 
 ### Environment Setup
 

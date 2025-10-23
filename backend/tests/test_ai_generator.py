@@ -7,15 +7,17 @@ These tests verify that:
 - Tool results are passed back to Claude correctly
 - Response formatting works
 """
-import pytest
+
 import sys
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ai_generator import AIGenerator
-from search_tools import ToolManager, CourseSearchTool
+from search_tools import CourseSearchTool, ToolManager
 from vector_store import SearchResults
 
 
@@ -30,9 +32,9 @@ class TestAIGeneratorInitialization:
         generator = AIGenerator(api_key, model)
 
         assert generator.model == model
-        assert generator.base_params['model'] == model
-        assert generator.base_params['temperature'] == 0
-        assert generator.base_params['max_tokens'] == 800
+        assert generator.base_params["model"] == model
+        assert generator.base_params["temperature"] == 0
+        assert generator.base_params["max_tokens"] == 800
 
     def test_system_prompt_is_set(self):
         """Test that system prompt is properly defined"""
@@ -44,7 +46,7 @@ class TestAIGeneratorInitialization:
 class TestAIGeneratorBasicResponse:
     """Test basic response generation without tools"""
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_generate_response_without_tools(self, mock_anthropic_class):
         """Test generating a response without tool usage"""
         # Setup mock
@@ -67,7 +69,7 @@ class TestAIGeneratorBasicResponse:
         assert result["tools_used"] == []
         mock_client.messages.create.assert_called_once()
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_generate_response_with_conversation_history(self, mock_anthropic_class):
         """Test generating response with conversation history"""
         # Setup mock
@@ -84,8 +86,7 @@ class TestAIGeneratorBasicResponse:
         # Generate response with history
         history = "User: Previous question\nAssistant: Previous answer"
         result = generator.generate_response(
-            query="Follow-up question",
-            conversation_history=history
+            query="Follow-up question", conversation_history=history
         )
 
         # Verify result format
@@ -95,13 +96,13 @@ class TestAIGeneratorBasicResponse:
 
         # Verify system prompt includes history
         call_args = mock_client.messages.create.call_args
-        assert history in call_args.kwargs['system']
+        assert history in call_args.kwargs["system"]
 
 
 class TestAIGeneratorToolCalling:
     """Test tool calling functionality"""
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_generate_response_with_tools_provided(self, mock_anthropic_class):
         """Test that tools are passed to the API when provided"""
         # Setup mock
@@ -123,16 +124,13 @@ class TestAIGeneratorToolCalling:
                 "input_schema": {
                     "type": "object",
                     "properties": {"query": {"type": "string"}},
-                    "required": ["query"]
-                }
+                    "required": ["query"],
+                },
             }
         ]
 
         # Generate response with tools
-        result = generator.generate_response(
-            query="What is MCP?",
-            tools=tools
-        )
+        result = generator.generate_response(query="What is MCP?", tools=tools)
 
         # Verify result format
         assert result["response"] == "Response"
@@ -141,11 +139,11 @@ class TestAIGeneratorToolCalling:
 
         # Verify tools were passed to API
         call_args = mock_client.messages.create.call_args
-        assert 'tools' in call_args.kwargs
-        assert call_args.kwargs['tools'] == tools
-        assert 'tool_choice' in call_args.kwargs
+        assert "tools" in call_args.kwargs
+        assert call_args.kwargs["tools"] == tools
+        assert "tool_choice" in call_args.kwargs
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_tool_execution_flow(self, mock_anthropic_class):
         """
         CRITICAL TEST: Verify that tool execution flow works correctly.
@@ -181,7 +179,7 @@ class TestAIGeneratorToolCalling:
         mock_vector_store.search.return_value = SearchResults(
             documents=["MCP is a protocol for AI"],
             metadata=[{"course_title": "MCP Course"}],
-            distances=[0.1]
+            distances=[0.1],
         )
 
         tool_manager = ToolManager()
@@ -192,7 +190,7 @@ class TestAIGeneratorToolCalling:
         result = generator.generate_response(
             query="What is MCP?",
             tools=tool_manager.get_tool_definitions(),
-            tool_manager=tool_manager
+            tool_manager=tool_manager,
         )
 
         # Verify tool was executed and final response returned
@@ -201,7 +199,7 @@ class TestAIGeneratorToolCalling:
         assert result["tools_used"] == ["search_course_content"]
         assert mock_client.messages.create.call_count == 2  # Initial call + follow-up
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_tool_execution_calls_tool_manager(self, mock_anthropic_class):
         """Test that tool execution properly calls the tool manager"""
         # Setup mocks
@@ -236,7 +234,7 @@ class TestAIGeneratorToolCalling:
         result = generator.generate_response(
             query="What is MCP?",
             tools=[{"name": "search_course_content"}],
-            tool_manager=mock_tool_manager
+            tool_manager=mock_tool_manager,
         )
 
         # Verify result format
@@ -246,16 +244,14 @@ class TestAIGeneratorToolCalling:
 
         # Verify tool manager was called with correct parameters
         mock_tool_manager.execute_tool.assert_called_once_with(
-            "search_course_content",
-            query="test query",
-            course_name="Test Course"
+            "search_course_content", query="test query", course_name="Test Course"
         )
 
 
 class TestAIGeneratorToolExecutionHandler:
     """Test the _handle_tool_execution method"""
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_handle_tool_execution_builds_messages_correctly(self, mock_anthropic_class):
         """Test that tool execution handler builds message history correctly"""
         mock_client = Mock()
@@ -283,7 +279,7 @@ class TestAIGeneratorToolExecutionHandler:
         # Create base params
         base_params = {
             "messages": [{"role": "user", "content": "What is MCP?"}],
-            "system": "You are a helpful assistant"
+            "system": "You are a helpful assistant",
         }
 
         # Create mock tool manager
@@ -292,22 +288,20 @@ class TestAIGeneratorToolExecutionHandler:
 
         # Execute tool handling
         result = generator._handle_tool_execution(
-            mock_initial_response,
-            base_params,
-            mock_tool_manager
+            mock_initial_response, base_params, mock_tool_manager
         )
 
         # Verify final API call was made with correct message structure
         call_args = mock_client.messages.create.call_args
-        messages = call_args.kwargs['messages']
+        messages = call_args.kwargs["messages"]
 
         # Should have: original user message, assistant tool use, user tool result
         assert len(messages) == 3
-        assert messages[0]['role'] == 'user'
-        assert messages[1]['role'] == 'assistant'
-        assert messages[2]['role'] == 'user'
+        assert messages[0]["role"] == "user"
+        assert messages[1]["role"] == "assistant"
+        assert messages[2]["role"] == "user"
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_handle_tool_execution_without_tools_in_final_call(self, mock_anthropic_class):
         """Test that final API call after tool execution does NOT include tools parameter"""
         mock_client = Mock()
@@ -333,7 +327,7 @@ class TestAIGeneratorToolExecutionHandler:
 
         base_params = {
             "messages": [{"role": "user", "content": "What is MCP?"}],
-            "system": "You are a helpful assistant"
+            "system": "You are a helpful assistant",
         }
 
         mock_tool_manager = Mock()
@@ -341,20 +335,18 @@ class TestAIGeneratorToolExecutionHandler:
 
         # Execute
         result = generator._handle_tool_execution(
-            mock_initial_response,
-            base_params,
-            mock_tool_manager
+            mock_initial_response, base_params, mock_tool_manager
         )
 
         # Verify final call does NOT have 'tools' parameter
         call_args = mock_client.messages.create.call_args
-        assert 'tools' not in call_args.kwargs
+        assert "tools" not in call_args.kwargs
 
 
 class TestAIGeneratorIntegration:
     """Integration tests with real tool manager"""
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_full_tool_calling_flow(self, mock_anthropic_class):
         """
         Integration test: Full flow from query to tool execution to final answer.
@@ -370,17 +362,14 @@ class TestAIGeneratorIntegration:
         tool_block.type = "tool_use"
         tool_block.name = "search_course_content"
         tool_block.id = "tool_use_1"
-        tool_block.input = {
-            "query": "What is MCP?",
-            "course_name": "Introduction to MCP"
-        }
+        tool_block.input = {"query": "What is MCP?", "course_name": "Introduction to MCP"}
         tool_use_response.content = [tool_block]
 
         # Response 2: Claude gives final answer after seeing search results
         final_response = Mock()
-        final_response.content = [Mock(
-            text="Based on the course materials, MCP stands for Model Context Protocol."
-        )]
+        final_response.content = [
+            Mock(text="Based on the course materials, MCP stands for Model Context Protocol.")
+        ]
         final_response.stop_reason = "end_turn"
 
         mock_client.messages.create.side_effect = [tool_use_response, final_response]
@@ -395,12 +384,14 @@ class TestAIGeneratorIntegration:
         mock_vector_store._resolve_course_name.return_value = "Introduction to MCP"
         mock_vector_store.search.return_value = SearchResults(
             documents=["MCP stands for Model Context Protocol. It enables AI applications to..."],
-            metadata=[{
-                "course_title": "Introduction to MCP",
-                "lesson_number": 0,
-                "lesson_link": "https://example.com/lesson-0"
-            }],
-            distances=[0.05]
+            metadata=[
+                {
+                    "course_title": "Introduction to MCP",
+                    "lesson_number": 0,
+                    "lesson_link": "https://example.com/lesson-0",
+                }
+            ],
+            distances=[0.05],
         )
 
         tool_manager = ToolManager()
@@ -411,7 +402,7 @@ class TestAIGeneratorIntegration:
         result = generator.generate_response(
             query="What is MCP in the Introduction to MCP course?",
             tools=tool_manager.get_tool_definitions(),
-            tool_manager=tool_manager
+            tool_manager=tool_manager,
         )
 
         # Verify results
@@ -431,7 +422,7 @@ class TestAIGeneratorIntegration:
 class TestMultiRoundToolCalling:
     """Test multi-round sequential tool calling functionality"""
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_two_sequential_tool_calls(self, mock_anthropic_class):
         """Test Claude can make 2 separate tool calls across 2 rounds"""
         mock_client = Mock()
@@ -458,9 +449,11 @@ class TestMultiRoundToolCalling:
 
         # Final response after both tools
         final_response = Mock()
+
         # Create a simple object with text attribute instead of Mock
         class TextBlock:
             text = "Here's what I found about MCP"
+
         final_response.content = [TextBlock()]
         final_response.stop_reason = "end_turn"
 
@@ -478,7 +471,7 @@ class TestMultiRoundToolCalling:
         result = generator.generate_response(
             query="Tell me about MCP",
             tools=[{"name": "search_course_content"}, {"name": "get_course_outline"}],
-            tool_manager=mock_tool_manager
+            tool_manager=mock_tool_manager,
         )
 
         # Verify
@@ -487,7 +480,7 @@ class TestMultiRoundToolCalling:
         assert result["tools_used"] == ["search_course_content", "get_course_outline"]
         assert mock_client.messages.create.call_count == 3  # 3 API calls total
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_max_rounds_enforcement(self, mock_anthropic_class):
         """Test system stops after 2 rounds even if Claude wants more"""
         mock_client = Mock()
@@ -514,8 +507,10 @@ class TestMultiRoundToolCalling:
 
         # Final response after max rounds
         final_response = Mock()
+
         class TextBlock:
             text = "Final answer after max rounds"
+
         final_response.content = [TextBlock()]
         final_response.stop_reason = "end_turn"
 
@@ -532,7 +527,7 @@ class TestMultiRoundToolCalling:
         result = generator.generate_response(
             query="Test query",
             tools=[{"name": "search_course_content"}],
-            tool_manager=mock_tool_manager
+            tool_manager=mock_tool_manager,
         )
 
         # Verify max rounds enforced
@@ -541,7 +536,7 @@ class TestMultiRoundToolCalling:
         assert len(result["tools_used"]) == 2
         assert result["response"] == "Final answer after max rounds"
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_tool_execution_error_terminates(self, mock_anthropic_class):
         """Test that tool execution error prevents additional rounds"""
         mock_client = Mock()
@@ -570,15 +565,17 @@ class TestMultiRoundToolCalling:
         result = generator.generate_response(
             query="Test query",
             tools=[{"name": "search_course_content"}],
-            tool_manager=mock_tool_manager
+            tool_manager=mock_tool_manager,
         )
 
         # Verify error terminated the loop
         assert result["rounds_used"] == 0  # No successful rounds
         assert mock_client.messages.create.call_count == 1  # Only initial call
-        assert result["tools_used"] == ["search_course_content"]  # Tool name collected before execution
+        assert result["tools_used"] == [
+            "search_course_content"
+        ]  # Tool name collected before execution
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_message_history_preserved_across_rounds(self, mock_anthropic_class):
         """Test messages accumulate correctly through rounds"""
         mock_client = Mock()
@@ -588,7 +585,7 @@ class TestMultiRoundToolCalling:
 
         def capture_and_respond(**kwargs):
             # Make a copy of messages to capture state at this point
-            captured_messages.append([msg.copy() for msg in kwargs.get('messages', [])])
+            captured_messages.append([msg.copy() for msg in kwargs.get("messages", [])])
 
             # Return appropriate response based on call count
             if len(captured_messages) == 1:
@@ -624,21 +621,21 @@ class TestMultiRoundToolCalling:
         result = generator.generate_response(
             query="Test query",
             tools=[{"name": "search_course_content"}],
-            tool_manager=mock_tool_manager
+            tool_manager=mock_tool_manager,
         )
 
         # Verify message history structure at each call
         # First call should have: [user_message]
         assert len(captured_messages[0]) == 1
-        assert captured_messages[0][0]['role'] == 'user'
+        assert captured_messages[0][0]["role"] == "user"
 
         # Second call should have: [user_message, assistant_tool_use, user_tool_results]
         assert len(captured_messages[1]) == 3
-        assert captured_messages[1][0]['role'] == 'user'
-        assert captured_messages[1][1]['role'] == 'assistant'
-        assert captured_messages[1][2]['role'] == 'user'
+        assert captured_messages[1][0]["role"] == "user"
+        assert captured_messages[1][1]["role"] == "assistant"
+        assert captured_messages[1][2]["role"] == "user"
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_tools_parameter_present_in_all_rounds(self, mock_anthropic_class):
         """Test that tools parameter is passed to API in every round"""
         mock_client = Mock()
@@ -671,18 +668,16 @@ class TestMultiRoundToolCalling:
 
         # Execute
         result = generator.generate_response(
-            query="Test query",
-            tools=tools_list,
-            tool_manager=mock_tool_manager
+            query="Test query", tools=tools_list, tool_manager=mock_tool_manager
         )
 
         # Verify tools present in ALL API calls
         for call in mock_client.messages.create.call_args_list:
-            assert 'tools' in call.kwargs
-            assert call.kwargs['tools'] == tools_list
-            assert 'tool_choice' in call.kwargs
+            assert "tools" in call.kwargs
+            assert call.kwargs["tools"] == tools_list
+            assert "tool_choice" in call.kwargs
 
-    @patch('anthropic.Anthropic')
+    @patch("anthropic.Anthropic")
     def test_conversation_history_preserved_in_multi_round(self, mock_anthropic_class):
         """Test conversation history is maintained across tool rounds"""
         mock_client = Mock()
@@ -718,9 +713,9 @@ class TestMultiRoundToolCalling:
             query="Follow-up question",
             conversation_history=conversation_history,
             tools=[{"name": "search_course_content"}],
-            tool_manager=mock_tool_manager
+            tool_manager=mock_tool_manager,
         )
 
         # Verify conversation history in system prompt for all calls
         for call in mock_client.messages.create.call_args_list:
-            assert conversation_history in call.kwargs['system']
+            assert conversation_history in call.kwargs["system"]
